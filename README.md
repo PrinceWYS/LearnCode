@@ -1,1 +1,1 @@
-This project is for my own learn.
+This respositories contains some codes and notes while my learning process.
