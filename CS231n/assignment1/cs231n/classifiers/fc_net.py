@@ -55,7 +55,15 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        W_1 = np.random.normal(loc=0, scale=weight_scale, size=(input_dim, hidden_dim))
+        b_1 = np.zeros(hidden_dim)
+        W_2 = np.random.normal(loc=0, scale=weight_scale, size=(hidden_dim, num_classes))
+        b_2 = np.zeros(num_classes)
+
+        self.params['W1'] = W_1
+        self.params['W2'] = W_2
+        self.params['b1'] = b_1
+        self.params['b2'] = b_2
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -88,7 +96,13 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        W_1, W_2 = self.params['W1'], self.params['W2']
+        b_1, b_2 = self.params['b1'], self.params['b2']
+
+        out_1, cache_1 = affine_forward(X, W_1, b_1)
+        out_relu, cache_relu = relu_forward(out_1)
+        out_2, cache_2 = affine_forward(out_relu, W_2, b_2)
+        scores = out_2
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -112,7 +126,13 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, d_loss = softmax_loss(out_2, y)
+        loss += 0.5 * self.reg * np.sum(W_1 * W_1) + 0.5 * self.reg * np.sum(W_2 * W_2)
+        dx, grads['W2'], grads['b2'] = affine_backward(d_loss, cache_2)
+        dx = relu_backward(dx, cache_relu)
+        dx, grads['W1'], grads['b1'] = affine_backward(dx, cache_1)
+        grads['W1'] += self.reg * W_1
+        grads['W2'] += self.reg * W_2
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
