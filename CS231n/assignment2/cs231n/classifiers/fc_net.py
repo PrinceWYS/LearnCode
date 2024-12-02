@@ -73,9 +73,17 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zeros.                               #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        first_dim = [input_dim] + hidden_dims
+        second_dim = hidden_dims + [num_classes]
 
-        pass
-
+        for i in range(self.num_layers):
+            self.params['W' + str(i + 1)] = np.random.normal(loc=0, scale=weight_scale, size=(first_dim[i], second_dim[i]))
+            self.params['b' + str(i + 1)] = np.zeros((second_dim[i]))
+        
+        if self.normalization != None:
+            for i in range(self.num_layers - 1):
+                self.params['gamma' + str(i + 1)] = np.ones((first_dim[i+1]))
+                self.params['beta' + str(i + 1)] = np.zeros((first_dim[i+1]))
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -148,7 +156,47 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        data = X.copy()
+        out = X.copy()
+        affine_out = []
+        affine_cache = []
+        norm_out = []
+        norm_cache = []
+        relu_out = []
+        relu_cache = []
+        dropout_out = []
+        dropout_cache = []
+
+        for i in range(self.num_layers - 1):
+            out, cache = affine_forward(out, self.params['W'+str(i+1)], self.params['b'+str(i+1)])
+            affine_out.append(out)
+            affine_cache.append(cache)
+            if self.normalization == "batchnorm":
+                out, cache = batchnorm_forward(out,
+                                               self.params['gamma' + str(i + 1)],
+                                               self.params['beta' + str(i + 1)],
+                                               self.bn_params[i])
+                norm_out.append(out)
+                norm_cache.append(cache)
+            if self.normalization == 'layernorm':
+                out, cache = layernorm_forward(out,
+                                               self.params['gamma' + str(i + 1)],
+                                               self.params['beta' + str(i + 1)],
+                                               self.bn_params[i])
+                norm_out.append(out)
+                norm_cache.append(cache)
+            out, cache = relu_forward(out)
+            relu_out.append(out)
+            relu_cache.append(cache)
+
+            if self.use_dropout:
+                out, cache=dropout_forward(out,self.dropout_param)
+                dropout_out.append(out)
+                dropout_cache.append(cache)
+          
+        scores, cache = affine_forward(out, self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)])
+        affine_out.append(scores)
+        affine_cache.append(cache)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -175,7 +223,27 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dout = softmax_loss(scores, y)
+        reg_term = 0.5 * self.reg * np.sum([np.sum(np.square(self.params['W' + str(i + 1)])) for i in range(self.num_layers)])
+        loss += reg_term
+
+        for i in range(self.num_layers, 0, -1):
+            if(i != self.num_layers):
+                if self.use_dropout:
+                    dout = dropout_backward(dout, dropout_cache[i-1])
+                dout = relu_backward(dout, relu_cache[i-1])
+                if self.normalization == "batchnorm":
+                    dout, dgamma, dbeta = batchnorm_backward_alt(dout, norm_cache[i-1])
+                    grads['gamma' + str(i)] = dgamma
+                    grads['beta' + str(i)] = dbeta
+                if self.normalization=="layernorm":
+                    dout, dgamma, dbeta = layernorm_backward(dout, norm_cache[i-1])
+                    grads['gamma' + str(i)] = dgamma
+                    grads['beta' + str(i)] = dbeta
+            dout, dw, db = affine_backward(dout, affine_cache[i-1])
+            dw += self.reg * self.params['W' + str(i)]
+            grads['W' + str(i)] = dw
+            grads['b' + str(i)] = db
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
